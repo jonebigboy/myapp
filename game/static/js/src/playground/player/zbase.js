@@ -18,6 +18,7 @@ class Player extends AcGameObject{
         this.move_length=0; //移动的距离
         this.cur_skill=null; //当前选择的技能
         this.friction=0.9;
+        this.spend_time=0; //冷静期
     }
     start(){
         if(this.is_me){
@@ -84,6 +85,18 @@ class Player extends AcGameObject{
     }
 
     is_attacked(angle,damage){
+        for(let i=0;i<10+Math.random()*5;i++){
+            let x=this.x,y=this.y;
+            let r=this.r*Math.random()*0.1;
+            let angle=Math.PI*2*Math.random();
+            let vx=Math.cos(angle);
+            let vy=Math.sin(angle);
+            let color=this.color
+            let speed=this.speed*10;
+            let move_length=this.r*Math.random()*5;
+            new Particle(this.playground,x,y,r,vx,vy,color,speed,move_length);
+        }
+
         this.r-=damage;
         if(this.r<10){
             this.destroy();
@@ -93,23 +106,20 @@ class Player extends AcGameObject{
         this.damage_y=Math.sin(angle);
         this.damage_speed=damage*100;
 
-        for(let i=0;i<10+Math.random()*5;i++){
-            let x=this.x,y=this.y;
-            let r=this.r*Math.random()*0.1;
-            let angle=Math.PI*2*Math.random();
-            let vx=Math.cos(angle);
-            let vy=Math.sin(angle);
-            let color=this.color
-            let speed=this.speed*10;
-            new Particle(this.playground,x,y,r,vx,vy,color,speed);
-            
-        }
+
 
         this.render();
 
     }
 
     update(){
+        this.spend_time+=this.timedelta/1000;
+        if(Math.random()<1/180.0&&!this.is_me&&this.spend_time>5){
+            let obj=this.playground.players[0];
+            this.shoot_fireball(obj.x,obj.y);
+        }
+
+
         if(this.damage_speed>this.eps){
             this.vx=this.vy=0;
             this.move_length=0;
