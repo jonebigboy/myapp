@@ -14,7 +14,7 @@ class AcGameMenu{
         </div>
         <br>
         <div class="ac-game-menu-field-item ac-game-menu-field-item-settings">
-            设置
+            退出
         </div>
     </div>
 </div>
@@ -44,6 +44,7 @@ class AcGameMenu{
         });
         this.$settings.click(function(){
             console.log("click settings");
+            outer.root.settings.logout_on_remote();
         });
     }
     show() {  // 显示menu界面
@@ -561,14 +562,14 @@ class Settings{
 
         this.$register=this.$settings.find(".ac-game-settings-register");
 
-        this.$register_username = this.$register.find(".ac-game-settings-register input"); 
+        this.$register_username = this.$register.find(".ac-game-settings-username input"); 
         this.$register_password = this.$register.find(".ac-game-settings-password-first input"); 
         this.$register_password_confirm = this.$register.find(".ac-game-settings-password-second input"); // 确认密码输入框
         this.$register_submit = this.$register.find(".ac-game-settings-submit button");
         this.$register_error_message = this.$register.find(".ac-game-settings-error-message");
         this.$register_login = this.$register.find(".ac-game-settings-option"); // 登陆选项
 
-
+        this.$acwing_login=this.$settings.find(".ac-game-settings-acwing img"); //第三方登录
 
         this.$register.hide();
         this.root.$ac_game.append(this.$settings);
@@ -581,20 +582,107 @@ class Settings{
     }
     
     add_listening_events(){
+        let outer =this;
         this.add_listening_events_login();
         this.add_listening_events_register();
+        this.$acwing_login.click(function(){
+            outer.acwing_login();
+        });
     }
     add_listening_events_login(){
         let outer=this;
         this.$login_register.click(function(){
             outer.register();
         });
+        this.$login_submit.click(function(){
+            outer.login_on_remote();
+        });
     }
-    
+     
     add_listening_events_register(){
         let outer=this;
         this.$register_login.click(function(){
             outer.login();
+        });
+        this.$register_submit.click(function(){
+            outer.register_on_remote();
+        });
+      
+    }
+    
+    acwing_login(){
+        $.ajax({
+            url:"https://app2295.acapp.acwing.com.cn/settings/acwing/web/apply_code",
+            type:"GET",
+            success:function(resp){
+                console.log(resp);
+                if(resp.result==="success"){
+                    window.location.replace(resp.apply_code_url);
+                }
+            },
+        });
+
+    }
+
+    login_on_remote(){ //登录
+        let username=this.$login_username.val();
+        let password=this.$login_password.val();
+        this.$login_error_message.empty();
+        let outer=this;
+        $.ajax({
+            url:"https://app2295.acapp.acwing.com.cn/settings/login/",
+            type:"GET",
+            data:{
+                username:username,
+                password:password,
+            },
+            success:function(resp){
+                console.log(resp);
+                if(resp.result==="success"){
+                    location.reload();
+                }else{
+                    outer.$login_error_message.html(resp.result);
+                }
+            },
+        });
+    }
+
+    register_on_remote(){ //注册
+        let outer=this;
+        let username=this.$register_username.val();
+        let password=this.$register_password.val();
+        let password_confirm=this.$register_password_confirm.val();
+        this.$register_error_message.empty();
+        
+        $.ajax({
+            url:"https://app2295.acapp.acwing.com.cn/settings/register/",
+            type:"GET",
+            data:{
+                username:username,
+                password:password,
+                password_confirm:password_confirm,
+            },
+            success:function(resp){
+                console.log(resp);
+                if(resp.result==="success"){
+                    location.reload();
+                }else{
+                    outer.$register_error_message.html(resp.result);
+                }
+            }
+        });
+    }
+    logout_on_remote(){ //登出
+        if(this.platform==="ACAPP") return false;
+        $.ajax({
+            url:"https://app2295.acapp.acwing.com.cn/settings/logout/",
+            type:"GET",
+            success:function(resp){
+                console.log(resp);
+                if(resp.result==="success"){
+                    location.reload();
+                }
+            },
         });
     }
 
