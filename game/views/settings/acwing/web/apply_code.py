@@ -11,7 +11,7 @@ def get_state():
 
 
 def apply_code(request):
-    appid="2297"
+    appid="2295"
     redirect_uri =quote("https://app2295.acapp.acwing.com.cn/settings/acwing/web/receive_code")
     scope="userinfo"
     state=get_state()
