@@ -1,6 +1,9 @@
 class Player extends AcGameObject{
     constructor(playground,x,y,r,color,speed,type,username,photo){
         super();
+        
+        //console.log(character,username,photo);
+
         this.playground=playground;
         this.ctx=this.playground.game_map.ctx;
         this.x=x;
@@ -30,7 +33,7 @@ class Player extends AcGameObject{
     start(){
         if(this.type==="me"){
             this.add_listening_events();
-        }else{
+        }else if(this.type==="robot"){
             let tx=Math.random()*this.playground.width/this.playground.scale;
             let ty=Math.random()*this.playground.height/this.playground.scale;
             this.move_to(tx,ty);

@@ -5,7 +5,20 @@ class AcGameObject{
         AC_GAME_OBJECT.push(this);
         this.has_called_start=false;//是否执行过start
         this.timedelta=0;     //帧调用的时间间隔
+        this.uuid=this.create_uuid();
+
+        
     }
+
+    create_uuid(){
+        let res="";
+        for(let i=0;i<8;i++){
+            let x=parseInt(Math.floor(Math.random()*10));
+            res+=x;
+        }
+        return res;
+    }
+
 
     start(){     //只在第一帧执行
     }
