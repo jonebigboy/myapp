@@ -51,7 +51,14 @@ class Player extends AcGameObject{
         this.playground.game_map.$canvas.mousedown(function(e){
             const rect=outer.ctx.canvas.getBoundingClientRect();
             if(e.which===3){
-                outer.move_to((e.clientX-rect.left)/outer.playground.scale,(e.clientY-rect.top)/outer.playground.scale);
+                let tx=(e.clientX-rect.left)/outer.playground.scale;
+                let ty=(e.clientY-rect.top)/outer.playground.scale;
+                outer.move_to(tx,ty);
+                if(outer.playground.mode==="multi mode"){
+                    
+                    outer.playground.mps.send_move_to(tx,ty);
+                }
+
             }else if(e.which===1){
                 if(outer.cur_skill==="fireball"){
                   
@@ -94,6 +101,8 @@ class Player extends AcGameObject{
         let angle=Math.atan2(ty-this.y,tx-this.x);
         this.vx=Math.cos(angle);
         this.vy=Math.sin(angle);
+
+        
     }
     //被攻击的方向和角度
     is_attacked(angle,damage){
