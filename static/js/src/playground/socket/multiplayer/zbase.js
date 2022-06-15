@@ -69,6 +69,25 @@ class MultiPlayerSocket{
         }));
     }
 
+    send_blink(tx,ty){
+        let outer=this;
+
+        this.ws.send(JSON.stringify({
+            'event':"blink",
+            'uuid':outer.uuid,
+            'tx':tx,
+            'ty':ty,
+        }));
+    }
+
+    send_message(text){
+        let outer=this;
+        this.ws.send(JSON.stringify({
+            'event':"message",
+            'uuid':outer.uuid,
+            'text':text,
+        }));
+    }
     receive(){
         let outer =this;
         this.ws.onmessage = function(e){
@@ -85,6 +104,10 @@ class MultiPlayerSocket{
                 outer.receive_shoot_fireball(uuid,data.tx,data.ty,data.ball_uuid);
             } else if(event==="attack"){
                 outer.receive_attack(uuid,data.attacked_uuid,data.x,data.y,data.angle,data.damage,data.ball_uuid);
+            } else if(event==="blink"){
+                outer.receive_blink(uuid,data.tx,data.ty);
+            } else if(event==="message"){
+                outer.receive_message(uuid,data.text);
             }
         };
     }
@@ -128,6 +151,19 @@ class MultiPlayerSocket{
         let attacked=this.get_player(attacked_uuid);
         if(attacker && attacked){
             attacked.receive_attack(x,y,angle,damage,ball_uuid,attacker);
+        }
+    }
+    receive_blink(uuid,tx,ty){
+        let player=this.get_player(uuid);
+        if(player){
+            player.blink(tx,ty);
+        }
+
+    }
+    receive_message(uuid,text){
+        let player=this.get_player(uuid);
+        if(player){
+            this.playground.chat_field.add_message(player.username,text);
         }
     }
 

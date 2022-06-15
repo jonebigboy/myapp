@@ -41,6 +41,7 @@ class AcGamePlayground {
         this.height=this.$playground.height();
         this.scale=this.height;
         this.game_map= new GameMap(this);
+        this.resize();
         this.players=[];
         this.players.push(new Player(this,this.width/2/this.scale,0.5,0.05,"white",0.15,"me",this.root.settings.username,this.root.settings.photo));
         this.mode=mode;
@@ -53,7 +54,7 @@ class AcGamePlayground {
                 this.players.push(new Player(this,this.width/2/this.scale,0.5,0.05,this.get_random_color(),0.15,"robot"));
             }
         }else if(this.mode==="multi mode"){
-            
+            this.chat_field= new ChatField(this);
             this.mps=new MultiPlayerSocket(this);
             this.mps.uuid=this.players[0].uuid;
 

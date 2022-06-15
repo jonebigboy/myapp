@@ -3,7 +3,7 @@ class GameMap extends AcGameObject {
         super();
         this.playground=playground;
         this.$canvas = $(`
-        <canvas width="600" height="300"></canvas>
+        <canvas width="600" height="300" tabindex=0></canvas>
             `);
         this.ctx=this.$canvas[0].getContext('2d');
         this.ctx.canvas.width=this.playground.width;
@@ -12,7 +12,7 @@ class GameMap extends AcGameObject {
         this.playground.$playground.append(this.$canvas);
     }
     start(){
-    
+        this.$canvas.focus();
     }
 
     resize(){

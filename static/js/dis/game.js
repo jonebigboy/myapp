@@ -122,12 +122,93 @@ let AC_GAME_ANIMATION = function(timestamp){
 }
 
 requestAnimationFrame(AC_GAME_ANIMATION);
+class ChatField {
+    constructor(playground){
+        this.playground =playground;
+
+        this.$history=$(`<div class="ac-game-chat-field-history">好消息</div>`);
+        this.$input=$(`<input type="text" class="ac-game-chat-field-input">`);
+
+        this.$history.hide();
+        this.$input.hide();
+        
+        this.func_id=null;
+        this.playground.$playground.append(this.$history);
+        this.playground.$playground.append(this.$input);
+        this.start();
+    }
+
+    start(){
+        this.add_listening_events();
+    }
+
+    add_listening_events(){
+        let outer =this;
+
+        this.$input.keydown(function(e){
+            if(e.which===27){
+                outer.hide_input();
+                return false;
+            } else if(e.which===13){
+                let username= outer.playground.root.settings.username;
+                let text=outer.$input.val();
+                if(text) {
+                    outer.$input.val("");
+
+                    outer.add_message(username,text);
+                    outer.playground.mps.send_message(text);
+                }
+                return false;
+            }
+        });
+    }
+    
+    render_message(message){
+        return $(`<div>${message}</div>`);
+    }
+
+    //在历史中添加信息
+    add_message(username,text){
+        let message=`[${username}]${text}`;
+        this.show_history();
+        this.$history.append(this.render_message(message));
+        this.$history.scrollTop(this.$history[0].scrollHeight);
+    }
+
+    show_history(){
+        this.$history.fadeIn();
+        let outer =this;
+        if(this.func_id) clearTimeout(this.func_id);
+
+        this.func_id=setTimeout(function(){
+            outer.$history.fadeOut();
+            outer.func_id=null;
+        },3000);
+
+    }
+    hide_history(){
+        this.$history.hide();
+    }
+
+    show_input(){
+        this.show_history();
+        this.$input.show();
+        this.$input.focus();
+    }
+
+    hide_input(){
+        this.$input.hide();
+        this.playground.game_map.$canvas.focus();
+    }
+
+
+}
 class GameMap extends AcGameObject {
     constructor(playground){
         super();
         this.playground=playground;
         this.$canvas = $(`
-        <canvas width="600" height="300"></canvas>
+        <canvas width="600" height="300" tabindex=0></canvas>
             `);
         this.ctx=this.$canvas[0].getContext('2d');
         this.ctx.canvas.width=this.playground.width;
@@ -136,7 +217,7 @@ class GameMap extends AcGameObject {
         this.playground.$playground.append(this.$canvas);
     }
     start(){
-    
+        this.$canvas.focus();
     }
 
     resize(){
@@ -262,6 +343,10 @@ class Player extends AcGameObject{
             this.fireball_coldtime =3; //秒
             this.fireball_img=new Image();
             this.fireball_img.src="https://cdn.acwing.com/media/article/image/2021/12/02/1_9340c86053-fireball.png";
+
+            this.blink_coldtime=5;
+            this.blink_img=new Image();
+            this.blink_img.src="https://cdn.acwing.com/media/article/image/2021/12/02/1_daccabdc53-blink.png";
         }
     }
 
@@ -293,8 +378,9 @@ class Player extends AcGameObject{
         });
 
         this.playground.game_map.$canvas.mousedown(function(e){
+
             if(outer.playground.state!=="fighting")
-                return false;
+                return true;
 
 
             const rect=outer.ctx.canvas.getBoundingClientRect();
@@ -307,27 +393,58 @@ class Player extends AcGameObject{
                 }
 
             }else if(e.which===1){
-                if(outer.fireball_coldtime>outer.eps)
-                    return false;
-                
+
                 let tx=(e.clientX-rect.left)/outer.playground.scale;
                 let ty=(e.clientY-rect.top)/outer.playground.scale;
                 if(outer.cur_skill==="fireball"){
+                    if(outer.fireball_coldtime>outer.eps)
+                        return false;
+
                     let fireball=outer.shoot_fireball(tx,ty);
                     if(outer.playground.mode==="multi mode"){
                        outer.playground.mps.send_shoot_fireball(tx,ty,fireball.uuid);
                     }
+                } else if(outer.cur_skill==="blink"){
+
+                    if(outer.blink_coldtime>outer.eps)
+                        return false;
+                    if(outer.playground.mode==="multi mode"){
+                        outer.playground.mps.send_blink(tx,ty);
+                    }
+
+                    outer.blink(tx,ty);
+
                 }
                 outer.cur_skill=null;
             }
         });
-        $(window).keydown(function(e){
+        this.playground.game_map.$canvas.keydown(function(e){
+            if(e.which===13){ //回车
+                if(outer.playground.mode==="multi mode"){
+                    outer.playground.chat_field.show_input();
+                    return false;
+                }
+            } else if(e.which===27){//esc
+                if(outer.playground.mode==="multi mode"){
+                    outer.playground.chat_field.hide_input();
+                    return false;
+                }
+            }
+
             if(outer.playground.state!=="fighting")
-                return false;
-            if(outer.fireball_coldtime>outer.eps)
-                return false;
+                return true;
+           
             if(e.which===81){   //q
+                if(outer.fireball_coldtime>outer.eps)
+                    return true;
                 outer.cur_skill="fireball";
+                return false;
+            }
+            if(e.which===70){
+                if(outer.blink_coldtime>outer.eps)
+                    return true;
+
+                outer.cur_skill="blink";
                 return false;
             }
 
@@ -347,7 +464,7 @@ class Player extends AcGameObject{
         let fireball=new FireBall(this.playground,this,x,y,r,vx,vy,color,speed,move_length,damage);
         this.fireballs.push(fireball);
 
-        this.fireball_coldtime=2;
+        this.fireball_coldtime=3;
         return fireball;
     }
 
@@ -360,6 +477,17 @@ class Player extends AcGameObject{
                 break;
             }
         }
+    }
+
+    blink(tx,ty){
+        let d=this.get_dist(this.x,this.y,tx,ty);
+        d=Math.min(d,0.8);
+        let angle=Math.atan2(ty-this.y,tx-this.x);
+        this.x+=d*Math.cos(angle);
+        this.y+=d*Math.sin(angle);
+
+        this.blink_coldtime=5;
+        this.move_length =0;//闪现完毕停下来
     }
 
     get_dist(x1,y1,x2,y2){
@@ -428,6 +556,8 @@ class Player extends AcGameObject{
     update_coldtime(){
         this.fireball_coldtime-=this.timedelta/1000;
         this.fireball_coldtime=Math.max(0,this.fireball_coldtime);
+        this.blink_coldtime-=this.timedelta/1000;
+        this.blink_coldtime=Math.max(0,this.blink_coldtime);
 
     }
 
@@ -482,26 +612,64 @@ class Player extends AcGameObject{
         }
 
         if(this.type==="me" && this.playground.state==="fighting"){
-            console.log("fireball_img");
+
             this.render_skill_coldtime();
         }
     }
 
     render_skill_coldtime(){
-        let x=1.5,y=0.9,r=0.04;
+        this.render_skill_fireball_coldtime();
+        this.render_skill_blink_coldtime();
+
+
+    }
+
+    render_skill_fireball_coldtime(){
+        let x=1.5,y=0.9,r=0.05;
         let scale =this.playground.scale;
         this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.arc(x * scale, y * scale, r * scale, 0, Math.PI * 2, false);
+        this.ctx.arc(x * scale, y * scale, r * scale, 0, Math.PI * 2 , false);
         this.ctx.stroke();
         this.ctx.clip();
         this.ctx.drawImage(this.fireball_img, x * scale - r * scale, y * scale - r * scale, r * 2 * scale, r * 2 * scale);
         this.ctx.restore();
-        console.log("fire");
+        if(this.fireball_coldtime>0){
+            this.ctx.beginPath();
+            this.ctx.moveTo(x*scale,y*scale);
+            this.ctx.arc(x*scale,y*scale,r*scale,0-Math.PI/2,2*Math.PI*(1-this.fireball_coldtime/3)-Math.PI/2,true);
+            this.ctx.lineTo(x*scale,y*scale);
+            this.ctx.fillStyle = "rgba(0,0,255,0.5)";
+            this.ctx.fill();
+        }  
+    }
+
+    render_skill_blink_coldtime(){
+        let x=1.62,y=0.9,r=0.05;
+        let scale =this.playground.scale;
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.arc(x * scale, y * scale, r * scale, 0, Math.PI * 2 , false);
+        this.ctx.stroke();
+        this.ctx.clip();
+        this.ctx.drawImage(this.blink_img, x * scale - r * scale, y * scale - r * scale, r * 2 * scale, r * 2 * scale);
+        this.ctx.restore();
+        if(this.blink_coldtime>0){
+            this.ctx.beginPath();
+            this.ctx.moveTo(x*scale,y*scale);
+            this.ctx.arc(x*scale,y*scale,r*scale,0-Math.PI/2,2*Math.PI*(1-this.blink_coldtime/5)-Math.PI/2,true);
+            this.ctx.lineTo(x*scale,y*scale);
+            this.ctx.fillStyle = "rgba(0,0,255,0.5)";
+            this.ctx.fill();
+        }  
 
     }
 
     on_destroy(){
+        if(this.type==="me"){
+            this.playground.state="over";
+        }
+
         for(let i=0;i<this.playground.players.length;i++){
             if(this.playground.players[i]===this){
                 this.playground.players.splice(i,1);
@@ -677,6 +845,25 @@ class MultiPlayerSocket{
         }));
     }
 
+    send_blink(tx,ty){
+        let outer=this;
+
+        this.ws.send(JSON.stringify({
+            'event':"blink",
+            'uuid':outer.uuid,
+            'tx':tx,
+            'ty':ty,
+        }));
+    }
+
+    send_message(text){
+        let outer=this;
+        this.ws.send(JSON.stringify({
+            'event':"message",
+            'uuid':outer.uuid,
+            'text':text,
+        }));
+    }
     receive(){
         let outer =this;
         this.ws.onmessage = function(e){
@@ -693,6 +880,10 @@ class MultiPlayerSocket{
                 outer.receive_shoot_fireball(uuid,data.tx,data.ty,data.ball_uuid);
             } else if(event==="attack"){
                 outer.receive_attack(uuid,data.attacked_uuid,data.x,data.y,data.angle,data.damage,data.ball_uuid);
+            } else if(event==="blink"){
+                outer.receive_blink(uuid,data.tx,data.ty);
+            } else if(event==="message"){
+                outer.receive_message(uuid,data.text);
             }
         };
     }
@@ -736,6 +927,19 @@ class MultiPlayerSocket{
         let attacked=this.get_player(attacked_uuid);
         if(attacker && attacked){
             attacked.receive_attack(x,y,angle,damage,ball_uuid,attacker);
+        }
+    }
+    receive_blink(uuid,tx,ty){
+        let player=this.get_player(uuid);
+        if(player){
+            player.blink(tx,ty);
+        }
+
+    }
+    receive_message(uuid,text){
+        let player=this.get_player(uuid);
+        if(player){
+            this.playground.chat_field.add_message(player.username,text);
         }
     }
 
@@ -783,6 +987,7 @@ class AcGamePlayground {
         this.height=this.$playground.height();
         this.scale=this.height;
         this.game_map= new GameMap(this);
+        this.resize();
         this.players=[];
         this.players.push(new Player(this,this.width/2/this.scale,0.5,0.05,"white",0.15,"me",this.root.settings.username,this.root.settings.photo));
         this.mode=mode;
@@ -795,7 +1000,7 @@ class AcGamePlayground {
                 this.players.push(new Player(this,this.width/2/this.scale,0.5,0.05,this.get_random_color(),0.15,"robot"));
             }
         }else if(this.mode==="multi mode"){
-            
+            this.chat_field= new ChatField(this);
             this.mps=new MultiPlayerSocket(this);
             this.mps.uuid=this.players[0].uuid;
 
