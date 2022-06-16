@@ -56,7 +56,6 @@ class MultiPlayerSocket{
 
     send_attack(attacked_uuid,x,y,angle,damage,ball_uuid){
         let outer=this;
-
         this.ws.send(JSON.stringify({
             'event':"attack",
             'uuid':outer.uuid,
@@ -147,6 +146,7 @@ class MultiPlayerSocket{
     }
 
     receive_attack(uuid,attacked_uuid,x,y,angle,damage,ball_uuid){
+        
         let attacker=this.get_player(uuid);
         let attacked=this.get_player(attacked_uuid);
         if(attacker && attacked){

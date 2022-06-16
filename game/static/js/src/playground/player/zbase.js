@@ -210,8 +210,9 @@ class Player extends AcGameObject{
             //栗子效果
             new Particle(this.playground,x,y,r,vx,vy,color,speed,move_length);
         }
-
+        console.log(damage);
         this.r-=damage;
+        console.log(this.r);
         if(this.r<this.eps){
             this.destroy();
             return false;
@@ -219,9 +220,6 @@ class Player extends AcGameObject{
         this.damage_x=Math.cos(angle);
         this.damage_y=Math.sin(angle);
         this.damage_speed=damage*100;
-
-
-
         this.render();
 
     }
@@ -232,17 +230,25 @@ class Player extends AcGameObject{
         this.x=x;
         this.y=y;
         this.is_attacked(angle,damage);
-        this.destroy_fireball(ball_uuid);
+        //this.destroy_fireball(ball_uuid);
     }
 
     update(){
         this.spend_time+=this.timedelta/1000;
+        this.update_win();
         if(this.type==="me"&&this.playground.state==="fighting"){
             this.update_coldtime();
         }
 
         this.update_move();
         this.render();
+    }
+    //判断是否胜利
+    update_win(){
+        if(this.playground.state==="fighting" && this.type==="me" && this.playground.players.length ===1){
+            this.playground.state="over";
+            this.playground.score_board.win();
+        }
     }
 
     update_coldtime(){
@@ -359,7 +365,9 @@ class Player extends AcGameObject{
 
     on_destroy(){
         if(this.type==="me"){
-            this.playground.state="over";
+            this.playground.state="over";//自己被删除了失败了
+            this.playground.score_board.lose();
+
         }
 
         for(let i=0;i<this.playground.players.length;i++){
